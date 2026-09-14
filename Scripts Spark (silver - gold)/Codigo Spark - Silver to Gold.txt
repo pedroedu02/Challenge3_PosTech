@@ -1,12 +1,4 @@
-"""
-Glue Job: silver_to_gold
-Tech Challenge Fase 3 - State of Data Brasil (2023, 2024, 2025-2026)
 
-Objetivo: ler a camada Silver (tabela historica unica e padronizada) e
-gerar as 6 tabelas Gold que respondem diretamente as perguntas de negocio:
-gold_mercado, gold_remuneracao, gold_tecnologias, gold_ia,
-gold_diversidade, gold_trabalho.
-"""
 
 import sys
 from awsglue.utils import getResolvedOptions
