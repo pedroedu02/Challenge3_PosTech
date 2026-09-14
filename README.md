@@ -210,3 +210,24 @@ Essa etapa cobre apenas a transformação **Bronze → Silver** — a agregaçã
 ## Análise exploratória via notebook (Google Colab)
 
 Em paralelo ao pipeline no AWS, a exploração e validação dos dados (estrutura dos 3 CSVs, dicionário de dados, nulos, duplicidades, amostras) foi feita em notebook Python, documentado e versionado no repositório: [`exploracao_CSV.ipynb`](exploracao_CSV.ipynb) — [abrir direto no Google Colab](https://colab.research.google.com/github/pedroedu02/Challenge3_PosTech/blob/main/exploracao_CSV.ipynb).
+
+## AWS Glue - Silver to Gold
+
+## PySpark — Tratamento Silver → Gold
+ 
+O Job `silver_to_gold` lê a camada Silver (já padronizada e limpa) e gera 6 tabelas agregadas, uma por tema de negócio:
+ 
+- **Preenchimento de "Não informado"**: antes de agrupar, valores nulos nas colunas usadas como dimensão (`cargo_atual`, `senioridade_comparavel`, `regiao`, `nivel_ensino`, `genero`, `modelo_trabalho`) são substituídos por `"Não informado"` — assim nenhuma combinação some silenciosamente da tabela Gold.
+- **`gold_mercado`**: quantidade de profissionais por região, senioridade, cargo e nível de ensino.
+- **`gold_remuneracao`**: faixa salarial por cargo, senioridade e região (filtra apenas quem respondeu faixa salarial).
+- **`gold_tecnologias`**: linguagem, cloud e ferramenta de BI mais usados. As 3 colunas de origem são multi-escolha (várias tecnologias numa célula só, separadas por vírgula), então usamos `explode()` para transformar 1 célula "Python, SQL" em 2 linhas separadas — senão "Python, SQL" viraria uma categoria diferente de "Python" sozinho.
+- **`gold_ia`**: uso de IA generativa por cargo e senioridade.
+- **`gold_diversidade`**: perfil de gênero por senioridade, cargo e região.
+- **`gold_trabalho`**: modelo de trabalho cruzado com faixa salarial e senioridade.
+Cada uma das 6 tabelas é gravada em Parquet, particionada por `ano_pesquisa`, em `s3://.../Gold/<nome-da-tabela>/`.
+ 
+Código completo: [Código Spark - Silver to Gold](<Scripts%20Spark%20(silver%20-%20gold)/Codigo%20Spark%20-%20Silver%20to%20Gold.txt>)
+ 
+## Análise exploratória da Gold via notebook (Google Colab)
+ 
+Depois que o Job `silver_to_gold` gravou as 6 tabelas em Parquet, a validação delas foi feita em notebook Python à parte: leitura de cada tabela, conferência de schema e volume de linhas, e reprodução das principais análises de negócio (senioridade, remuneração, tecnologias, IA, diversidade, modelo de trabalho) diretamente sobre a Gold. Notebook: [`exploracao_Gold.ipynb`](exploracao_Gold.ipynb) — [abrir direto no Google Colab](https://colab.research.google.com/github/pedroedu02/Challenge3_PosTech/blob/main/exploracao_Gold.ipynb).
