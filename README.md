@@ -182,6 +182,14 @@ Os 3 CSVs brutos têm quase 400 colunas cada, muitas de múltipla escolha com no
 
 Evidências (prints do console AWS): [imagens Console AWS/GLUE](<imagens%20Console%20AWS/GLUE>)
 
+## AWS Glue Jobs — criação e uso
+
+O **Glue Job** é o serviço que executa de fato o script PySpark na nuvem, sem precisar administrar servidor ou cluster manualmente — é a AWS que provisiona e gerencia o ambiente Spark por trás dele. Diferente do Crawler (que só descobre e cataloga schema), é no Job que a transformação de dado acontece de verdade.
+
+O Job `bronze_to_silver` foi criado direto pelo console: **AWS Glue → ETL jobs → Script editor**, escolhendo o motor **Spark**, e colando o script PySpark com o tratamento Bronze → Silver. Ele aparece na tela **AWS Glue Studio**, em "Your jobs", rodando na versão **Glue 5.1**.
+
+Evidências (prints do console AWS): [imagens Console AWS/GLUE](<imagens%20Console%20AWS/GLUE>)
+
 ## PySpark — Tratamento Bronze → Silver
 
 O Job `bronze_to_silver` (AWS Glue ETL, Glue version 5.1) lê os 3 CSVs direto do S3 (camada Bronze) e aplica, em PySpark, os seguintes tratamentos:
@@ -201,6 +209,4 @@ Essa etapa cobre apenas a transformação **Bronze → Silver** — a agregaçã
 
 ## Análise exploratória via notebook (Google Colab)
 
-Em paralelo ao pipeline no AWS, a exploração e validação dos dados (estrutura dos 3 CSVs, dicionário de dados, nulos, duplicidades, amostras) foi feita em notebook Python rodado no Google Colab, documentado e versionado no repositório.
-
-repositório: [`exploracao_CSV.ipynb`](exploracao_CSV.ipynb) — [abrir direto no Google Colab](https://colab.research.google.com/github/pedroedu02/Challenge3_PosTech/blob/main/exploracao_CSV.ipynb).
+Em paralelo ao pipeline no AWS, a exploração e validação dos dados (estrutura dos 3 CSVs, dicionário de dados, nulos, duplicidades, amostras) foi feita em notebook Python, documentado e versionado no repositório: [`exploracao_CSV.ipynb`](exploracao_CSV.ipynb) — [abrir direto no Google Colab](https://colab.research.google.com/github/pedroedu02/Challenge3_PosTech/blob/main/exploracao_CSV.ipynb).
