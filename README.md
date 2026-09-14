@@ -202,3 +202,5 @@ Essa etapa cobre apenas a transformação **Bronze → Silver** — a agregaçã
 ## Análise exploratória via notebook (Google Colab)
 
 Em paralelo ao pipeline no AWS, a exploração e validação dos dados (estrutura dos 3 CSVs, dicionário de dados, nulos, duplicidades, amostras) foi feita em notebook Python rodado no Google Colab, documentado e versionado no repositório.
+
+repositório: [`exploracao_CSV.ipynb`](exploracao_CSV.ipynb) — [abrir direto no Google Colab](https://colab.research.google.com/github/pedroedu02/Challenge3_PosTech/blob/main/exploracao_CSV.ipynb).
