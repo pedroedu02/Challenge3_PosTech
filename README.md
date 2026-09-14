@@ -142,3 +142,63 @@ O trabalho 100% remoto, predominante e estável em 2023-2024 (~46%), caiu quase 
 5. **1 erro de digitação pontual** identificado na faixa salarial de 2025-2026 ("R$ 25.001 a R$ 3000", claramente deveria ser R$ 30.000).
 
 > ⚠️ **PS:** Todos os dados foi calculados diretamente dos 3 arquivos CSV originais, sem nenhuma limpeza ou padronização prévia 
+
+
+
+## Arquitetura utilizada e desenhada
+
+![Arquitetura AWS](<Arquitetura/arquitetura_aws_tech_challenge.drawio (1).png>)
+
+Arquivo editável (Draw.io): [`Arquitetura/arquitetura_aws_tech_challenge.drawio`](Arquitetura/arquitetura_aws_tech_challenge.drawio)
+
+O pipeline parte dos 3 CSVs originais (Fonte de Dados) e passa por: **AWS S3 (Bronze)** → **AWS Glue** (conectar, extrair e catalogar) → **PySpark** (limpeza, padronização e transformação) → **AWS S3 (Silver)** → **PySpark** (criação de modelo analítico e agregação de negócio) → **AWS S3 (Gold)** → **Athena** (SQL analítico) → **Dashboards/BI** (gráficos, recomendações e apresentações).
+
+| Serviço | Papel |
+|---|---|
+| Amazon S3 | Data Lake — camadas Bronze, Silver e Gold |
+| AWS Glue | Conexão, extração e catalogação dos dados (Crawler + Data Catalog) |
+| PySpark (via Glue Job) | Limpeza, padronização, transformação e agregação de negócio |
+| Amazon Athena | Consultas SQL analíticas sobre a camada Gold |
+
+Estrutura real no S3 (bucket `tech-challeng-3-pedrogarcia-rm374179`, região us-east-1):
+
+| Camada | Conteúdo |
+|---|---|
+| `Bronze/state_of_data/ano_pesquisa=2023/` | `state_of_data_2023.csv` (14,5 MB) |
+| `Bronze/state_of_data/ano_pesquisa=2024/` | `state_of_data_2024.csv` (15,5 MB) |
+| `Bronze/state_of_data/ano_pesquisa=2025-2026/` | `state_of_data_2025-2026.csv` (9,9 MB) |
+| `Silver/state_of_data/` | Tabela histórica única, padronizada |
+| `Gold/mercado/`, `Gold/remuneracao/`, `Gold/tecnologias/`, `Gold/ia/`, `Gold/diversidade/`, `Gold/trabalho/` | 6 tabelas de negócio, uma por tema |
+
+Imagens do console: [imagens Console AWS/s3](imagens%20Console%20AWS/s3)
+
+> ⚠️ **PS:** Todos os buckets foram criados diretamente pelo proprio console, não foi criado por codigos.
+
+## AWS Glue — Crawlers e Data Catalog
+
+Para catalogar os dados no Glue Data Catalog, foi criado um database (`tech_challenge_state_of_data`) e 5 crawlers: 3 crawlers separados para a camada Bronze (um por ano — `crawler_state_of_data_2023`, `crawler_state_of_data_2024`, `crawler_state_of_data_2025_2026`), 1 crawler para a camada Silver (`crawler_silver_state_of_data`) e 1 crawler para a camada Gold (`crawler_gold_state_of_data`), todos com status `Succeeded`/`Ready`.
+
+Os 3 CSVs brutos têm quase 400 colunas cada, muitas de múltipla escolha com nomes bem parecidos, e por isso o crawler da Bronze não consegue nomear as colunas automaticamente (ficam como `col0`, `col1`...). Isso não afeta o restante do pipeline: o tratamento real de nome de coluna é feito no PySpark, direto a partir do CSV no S3, e não depende do schema inferido pelo crawler. Já o crawler da Silver, rodado sobre um Parquet com apenas 17 colunas com nomes limpos, cataloga o schema corretamente sem esse problema.
+
+Evidências (prints do console AWS): [imagens Console AWS/GLUE](<imagens%20Console%20AWS/GLUE>)
+
+## PySpark — Tratamento Bronze → Silver
+
+O Job `bronze_to_silver` (AWS Glue ETL, Glue version 5.1) lê os 3 CSVs direto do S3 (camada Bronze) e aplica, em PySpark, os seguintes tratamentos:
+
+- **Dicionário de dados**: renomeia as colunas técnicas de cada ano (que têm nomes diferentes entre 2023, 2024 e 2025-2026) para nomes de negócio padronizados (`idade`, `genero`, `senioridade`, `faixa_salarial`, etc.), buscando a coluna certa por igualdade ou por "começa com" o código correspondente.
+- **Senioridade comparável**: cria a coluna `senioridade_comparavel`, agrupando a categoria "Especialista/Staff+" (que só existe em 2025-2026) dentro de "Sênior", para permitir comparação justa entre os 3 anos sem apagar a categoria original.
+- **Correção/desconsideração de erros de digitação**: corrige o valor `"R$ 3000"` para `"R$ 30.000"` na faixa salarial, e descarta (vira nulo) o valor `"R$ 101/mês a R$ 2.000/mês"`, que não corresponde a nenhuma faixa válida do formulário.
+- **Remoção de duplicatas**: `dropDuplicates()` sobre todas as colunas, eliminando as linhas repetidas identificadas na análise exploratória inicial.
+- **Limpeza geral de texto**: `trim()` e conversão de string vazia em nulo em todas as colunas, para evitar que valores como `" Feminino"` e `"Feminino"` sejam tratados como categorias diferentes.
+- **Remoção de linha 100% vazia**: remove qualquer respondente que não preencheu nenhum dos campos de negócio usados.
+
+Ao final, o resultado é unido (`unionByName`) num único DataFrame histórico e gravado em Parquet na camada Silver, particionado por `ano_pesquisa`.
+
+Código completo: [Código Spark - Bronze to Silver](<Scripts%20Spark%20(silver%20-%20gold)/Codigo%20Spark%20-%20Brozne%20to%20Silver.txt>)
+
+Essa etapa cobre apenas a transformação **Bronze → Silver** — a agregação de negócio que gera as tabelas da camada Gold (mercado, remuneração, tecnologias, IA, diversidade, trabalho) é tratada na seção seguinte.
+
+## Análise exploratória via notebook (Google Colab)
+
+Em paralelo ao pipeline no AWS, a exploração e validação dos dados (estrutura dos 3 CSVs, dicionário de dados, nulos, duplicidades, amostras) foi feita em notebook Python rodado no Google Colab, documentado e versionado no repositório.
