@@ -1,153 +1,128 @@
 """
-entrar n a camada Silver (tabela historica unica e padronizada) e gerar as tabelaGold que respondemas perguntas de negocio:
+Glue Job: silver_to_gold
+Tech Challenge Fase 3 - State of Data Brasil (2023, 2024, 2025-2026)
+
+Objetivo: ler a camada Silver (tabela historica unica e padronizada) e
+gerar as 6 tabelas Gold que respondem diretamente as perguntas de negocio:
 gold_mercado, gold_remuneracao, gold_tecnologias, gold_ia,
 gold_diversidade, gold_trabalho.
 """
 
 import sys
-from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
 from pyspark.sql import functions as F
- 
-# --- parametros do Job (definidos na criacao do Job no console) ---
+
 args = getResolvedOptions(sys.argv, ['JOB_NAME', 'BUCKET_NAME'])
- 
+
 sc = SparkContext.getOrCreate()
 glueContext = GlueContext(sc)
 spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
- 
+
 BUCKET = args['BUCKET_NAME']
- 
-FILES = {
-    '2023':      f"s3://{BUCKET}/Bronze/state_of_data/ano_pesquisa=2023/",
-    '2024':      f"s3://{BUCKET}/Bronze/state_of_data/ano_pesquisa=2024/",
-    '2025-2026': f"s3://{BUCKET}/Bronze/state_of_data/ano_pesquisa=2025-2026/",
-}
- 
-# Dicionario de dados: variavel padronizada -> chave de busca do nome real da coluna em cada ano
-# (a busca eh feita por igualdade OU por "comeca com", pois em 2023 o nome real da coluna
-#  vem no formato "('P1_a ', 'Idade')" por causa de como o CSV original foi exportado)
-DICIONARIO = {
-    'id':                             {'2023': "('P0',",   '2024': '0.a_token',                                      '2025-2026': '0.a_token'},
-    'idade':                          {'2023': "('P1_a '", '2024': '1.a_idade',                                      '2025-2026': '1.a_idade'},
-    'genero':                         {'2023': "('P1_b '", '2024': '1.b_genero',                                     '2025-2026': '1.b_genero'},
-    'regiao':                         {'2023': "('P1_i_2 '",'2024': '1.i.2_regiao_onde_mora',                        '2025-2026': '1.i.2_regiao_onde_mora'},
-    'nivel_ensino':                   {'2023': "('P1_l '", '2024': '1.l_nivel_de_ensino',                             '2025-2026': '1.l_nivel_de_ensino'},
-    'cargo_atual':                    {'2023': "('P2_f '", '2024': '2.f_cargo_atual',                                 '2025-2026': '2.f_cargo_atual'},
-    'senioridade':                    {'2023': "('P2_g '", '2024': '2.g_nivel',                                       '2025-2026': '2.g_nivel'},
-    'faixa_salarial':                 {'2023': "('P2_h '", '2024': '2.h_faixa_salarial',                              '2025-2026': '2.h_faixa_salarial'},
-    'exp_dados':                      {'2023': "('P2_i '", '2024': '2.i_tempo_de_experiencia_em_dados',               '2025-2026': '2.i_tempo_de_experiencia_em_dados'},
-    'modelo_trabalho':                {'2023': "('P2_r '", '2024': '2.r_modelo_de_trabalho_atual',                    '2025-2026': '2.q_modelo_de_trabalho_atual'},
-    'linguagem_preferida':            {'2023': "('P4_f '", '2024': '4.f_linguagem_preferida',                         '2025-2026': '4.c_linguagem_preferida'},
-    'cloud_dia_a_dia':                {'2023': "('P4_h '", '2024': '4.h_cloud_(dia_a_dia)',                           '2025-2026': '4.e_cloud_(dia_a_dia)'},
-    'ferramenta_bi_dia_a_dia':        {'2023': "('P4_j '", '2024': '4.j_ferramenta_de_bi_(dia_a_dia)',                '2025-2026': '4.g_ferramenta_de_bi_(dia_a_dia)'},
-    'tipo_uso_ia_generativa_empresa': {'2023': "('P4_l '", '2024': '4.l_tipo_de_uso_de_ai_generativa_e_llm_na_empresa','2025-2026': '4.i_tipo_de_uso_de_ai_generativa_e_llm_na_empresa'},
-    'uso_chatgpt_copilot':            {'2023': "('P4_m '", '2024': '4.m_usa_chatgpt_ou_copilot_no_trabalho?',         '2025-2026': '4.j_usa_chatgpt_ou_copilot_no_trabalho?'},
-}
- 
- 
-def find_col(columns, key):
-    """Encontra o nome real da coluna no DataFrame a partir da chave do dicionario."""
-    for c in columns:
-        if c == key or c.startswith(key):
-            return c
-    raise ValueError(f"Coluna nao encontrada para chave: {key}")
- 
- 
-def read_and_standardize(year, path):
-    """Le o CSV bruto do S3 e retorna um DataFrame ja com as colunas renomeadas
-    conforme o dicionario de dados, mais a coluna ano_pesquisa."""
-    df = (
-        spark.read
-        .option("header", "true")
-        .option("quote", '"')
-        .option("escape", '"')
-        .option("multiLine", "true")
-        .csv(path)
-    )
-    select_exprs = []
-    for var_padrao, anos in DICIONARIO.items():
-        key = anos[year]
-        real_col = find_col(df.columns, key)
-        select_exprs.append(F.col(f"`{real_col}`").alias(var_padrao))
-    return df.select(*select_exprs).withColumn("ano_pesquisa", F.lit(year))
- 
- 
-# --- 1. Leitura e padronizacao dos 3 anos ---
-dfs = [read_and_standardize(year, path) for year, path in FILES.items()]
-df_silver = dfs[0]
-for d in dfs[1:]:
-    df_silver = df_silver.unionByName(d)
- 
-# --- 2. Tratamento: senioridade comparavel entre os 3 anos ---
-# "Especialista/Staff+" so existe na pesquisa de 2025-2026. Mantemos a coluna
-# original (senioridade) intacta e criamos uma segunda coluna agrupada,
-# para permitir comparacao justa de "% Senior" nos 3 anos.
-df_silver = df_silver.withColumn(
-    "senioridade_comparavel",
-    F.when(F.col("senioridade") == "Especialista/Staff+", "Sênior")
-     .otherwise(F.col("senioridade"))
+SILVER_PATH = f"s3://{BUCKET}/Silver/state_of_data/"
+GOLD_BASE_PATH = f"s3://{BUCKET}/Gold/"
+
+# --- 1. Leitura da Silver ---
+df_silver = spark.read.parquet(SILVER_PATH)
+print(f"Silver lida: {df_silver.count()} linhas")
+
+# --- 2. Preencher "Nao informado" nas dimensoes categoricas usadas para cruzar/agrupar ---
+# Isso evita que combinacoes com valor nulo (ex.: cargo nao respondido, mas salario sim)
+# sumam silenciosamente da tabela Gold - viram uma categoria visivel e explicita.
+DIMENSOES_CATEGORICAS = [
+    "cargo_atual", "senioridade_comparavel", "regiao",
+    "nivel_ensino", "genero", "modelo_trabalho",
+]
+
+def preencher_nao_informado(df):
+    for c in DIMENSOES_CATEGORICAS:
+        if c in df.columns:
+            df = df.withColumn(
+                c, F.when(F.col(c).isNull(), F.lit("Não informado")).otherwise(F.col(c))
+            )
+    return df
+
+df_base = preencher_nao_informado(df_silver)
+
+# --- 3. gold_mercado: estrutura do mercado (quantidade de profissionais por perfil) ---
+gold_mercado = (
+    df_base
+    .groupBy("ano_pesquisa", "regiao", "senioridade_comparavel", "cargo_atual", "nivel_ensino")
+    .agg(F.count("*").alias("total_profissionais"))
 )
- 
-# --- 3. Tratamento: corrigir/desconsiderar erros de digitacao pontuais na faixa salarial ---
-df_silver = df_silver.withColumn(
-    "faixa_salarial",
-    F.when(
-        F.col("faixa_salarial") == "de R$ 25.001/mês a R$ 3000/mês",
-        "de R$ 25.001/mês a R$ 30.000/mês"
-    )
-    # "de R$ 101/mês a R$ 2.000/mês" (2023, 1 registro) nao corresponde a nenhuma faixa
-    # valida do formulario - desconsiderado (vira nulo) em vez de adivinhar o valor certo.
-    .when(
-        F.col("faixa_salarial") == "de R$ 101/mês a R$ 2.000/mês",
-        None
-    )
-    .otherwise(F.col("faixa_salarial"))
+
+# --- 4. gold_remuneracao: faixa salarial por cargo/senioridade/regiao ---
+# Filtra apenas quem respondeu faixa salarial (nao faz sentido incluir quem nao respondeu
+# nessa tabela especifica - filtro proprio da analise, diferente da limpeza geral da Silver)
+gold_remuneracao = (
+    df_base
+    .filter(F.col("faixa_salarial").isNotNull())
+    .groupBy("ano_pesquisa", "cargo_atual", "senioridade_comparavel", "regiao", "faixa_salarial")
+    .agg(F.count("*").alias("total_profissionais"))
 )
- 
-# --- 4. Tratamento: remover linhas duplicadas (comparando todas as colunas) ---
-# Ja sabiamos da Etapa 1 que existem duplicatas de linha inteira no dado bruto:
-# 2023 = 0, 2024 = 2, 2025-2026 = 1. Duplicata e sempre erro/ruido (diferente de nulo,
-# que aqui e majoritariamente estrutural) - por isso e removida aqui na Silver.
-total_antes = df_silver.count()
-df_silver = df_silver.dropDuplicates()
-total_depois = df_silver.count()
-print(f"Duplicatas removidas: {total_antes - total_depois} (de {total_antes} para {total_depois})")
- 
-# --- 5. Tratamento: limpeza geral de texto (trim + string vazia -> nulo) ---
-# Isso vale para a base inteira, independente da analise que sera feita depois:
-# " Feminino" e "Feminino" nao podem virar duas categorias diferentes num grafico.
-for c in df_silver.columns:
-    df_silver = df_silver.withColumn(
-        c,
-        F.when(F.trim(F.col(c)) == "", None).otherwise(F.trim(F.col(c)))
+
+# --- 5. gold_tecnologias: linguagem, cloud e BI mais usados ---
+# As 3 colunas de origem sao multi-escolha (varias tecnologias numa celula so, separadas
+# por virgula). Usamos explode() para transformar 1 celula "Python, SQL" em 2 linhas
+# separadas - senao "Python, SQL" viraria uma categoria diferente de "Python" sozinho.
+def explode_tecnologia(df, coluna, categoria):
+    return (
+        df.filter(F.col(coluna).isNotNull())
+          .withColumn("tecnologia", F.explode(F.split(F.col(coluna), r",\s*")))
+          .withColumn("categoria", F.lit(categoria))
+          .select("ano_pesquisa", "categoria", "tecnologia", "cargo_atual", "senioridade_comparavel")
     )
- 
-# --- 6. Tratamento: remover linha 100% vazia (nenhum dos 15 campos de negocio preenchido) ---
-# Diferente de nulo pontual (estrutural, tratado so na Gold de cada analise), uma linha
-# sem NENHUM campo preenchido nao carrega informacao nenhuma para nenhuma analise -
-# por isso e removida aqui, de forma geral.
-colunas_negocio = [c for c in df_silver.columns if c not in ("id", "ano_pesquisa")]
-condicao_vazia = None
-for c in colunas_negocio:
-    cond = F.col(c).isNull()
-    condicao_vazia = cond if condicao_vazia is None else (condicao_vazia & cond)
- 
-total_antes_vazia = df_silver.count()
-df_silver = df_silver.filter(~condicao_vazia)
-total_depois_vazia = df_silver.count()
-print(f"Linhas 100% vazias removidas: {total_antes_vazia - total_depois_vazia}")
- 
-# --- 7. Gravacao na camada Silver, particionada por ano_pesquisa ---
-output_path = f"s3://{BUCKET}/Silver/state_of_data/"
-df_silver.write.mode("overwrite").partitionBy("ano_pesquisa").parquet(output_path)
- 
-print(f"Silver gravada com sucesso em: {output_path}")
-print(f"Total de linhas processadas: {df_silver.count()}")
- 
+
+gold_tecnologias = (
+    explode_tecnologia(df_base, "linguagem_preferida", "linguagem")
+    .unionByName(explode_tecnologia(df_base, "cloud_dia_a_dia", "cloud"))
+    .unionByName(explode_tecnologia(df_base, "ferramenta_bi_dia_a_dia", "bi"))
+    .groupBy("ano_pesquisa", "categoria", "tecnologia", "cargo_atual", "senioridade_comparavel")
+    .agg(F.count("*").alias("total_mencoes"))
+)
+
+# --- 6. gold_ia: adoção e uso de IA generativa ---
+gold_ia = (
+    df_base
+    .filter(F.col("uso_chatgpt_copilot").isNotNull())
+    .groupBy("ano_pesquisa", "cargo_atual", "senioridade_comparavel", "uso_chatgpt_copilot")
+    .agg(F.count("*").alias("total_profissionais"))
+)
+
+# --- 7. gold_diversidade: perfil de genero por senioridade/cargo/regiao ---
+gold_diversidade = (
+    df_base
+    .filter(F.col("genero").isNotNull())
+    .groupBy("ano_pesquisa", "genero", "senioridade_comparavel", "cargo_atual", "regiao")
+    .agg(F.count("*").alias("total_profissionais"))
+)
+
+# --- 8. gold_trabalho: modelo de trabalho x remuneracao x senioridade ---
+gold_trabalho = (
+    df_base
+    .filter(F.col("modelo_trabalho").isNotNull())
+    .groupBy("ano_pesquisa", "modelo_trabalho", "faixa_salarial", "senioridade_comparavel")
+    .agg(F.count("*").alias("total_profissionais"))
+)
+
+# --- 9. Gravacao de todas as tabelas Gold, particionadas por ano_pesquisa ---
+TABELAS_GOLD = {
+    "mercado": gold_mercado,
+    "remuneracao": gold_remuneracao,
+    "tecnologias": gold_tecnologias,
+    "ia": gold_ia,
+    "diversidade": gold_diversidade,
+    "trabalho": gold_trabalho,
+}
+
+for nome, df in TABELAS_GOLD.items():
+    caminho = f"{GOLD_BASE_PATH}{nome}/"
+    df.write.mode("overwrite").partitionBy("ano_pesquisa").parquet(caminho)
+    print(f"gold_{nome} gravada em {caminho} ({df.count()} linhas)")
+
 job.commit()
