@@ -207,9 +207,9 @@ Código completo: [Código Spark - Bronze to Silver](<Scripts%20Spark%20(silver%
 
 Essa etapa cobre apenas a transformação **Bronze → Silver** — a agregação de negócio que gera as tabelas da camada Gold (mercado, remuneração, tecnologias, IA, diversidade, trabalho) é tratada na seção seguinte.
 
-## Análise exploratória via notebook (Google Colab)
+## Análise exploratória via notebook (Google Colab) - CAMADA SILVER
 
-Em paralelo ao pipeline no AWS, a exploração e validação dos dados (estrutura dos 3 CSVs, dicionário de dados, nulos, duplicidades, amostras) foi feita em notebook Python, documentado e versionado no repositório: [`exploracao_CSV.ipynb`](exploracao_CSV.ipynb) — [abrir direto no Google Colab](https://colab.research.google.com/github/pedroedu02/Challenge3_PosTech/blob/main/exploracao_CSV.ipynb).
+Em paralelo ao pipeline no AWS, a exploração e validação dos dados (estrutura dos 3 CSVs, dicionário de dados, nulos, duplicidades, amostras) foi feita em notebook Python, documentado e versionado no repositório: [`exploracao_CamadaSilver.ipynb`](exploracao_CamadaSilver.ipynb).
 
 ## AWS Glue - Silver to Gold
 
@@ -228,10 +228,9 @@ Cada uma das 6 tabelas é gravada em Parquet, particionada por `ano_pesquisa`, e
  
 Código completo: [Código Spark - Silver to Gold](<Scripts%20Spark%20(silver%20-%20gold)/Codigo%20Spark%20-%20Silver%20to%20Gold.txt>)
  
-## Análise exploratória da Gold via notebook (Google Colab)
+## Análise exploratória da Gold via notebook (Google Colab) - CAMADA GOLD
  
-Depois que o Job `silver_to_gold` gravou as 6 tabelas em Parquet, a validação delas foi feita em notebook Python à parte: leitura de cada tabela, conferência de schema e volume de linhas, e reprodução das principais análises de negócio (senioridade, remuneração, tecnologias, IA, diversidade, modelo de trabalho) diretamente sobre a Gold. Notebook: [`exploracao_Gold.ipynb`](exploracao_Gold.ipynb) — [abrir direto no Google Colab](https://colab.research.google.com/github/pedroedu02/Challenge3_PosTech/blob/main/exploracao_Gold.ipynb).
-
+Depois que o Job `silver_to_gold` gravou as 6 tabelas em Parquet, a validação delas foi feita em notebook Python à parte: leitura de cada tabela, conferência de schema e volume de linhas, e reprodução das principais análises de negócio (senioridade, remuneração, tecnologias, IA, diversidade, modelo de trabalho) diretamente sobre a Gold. Notebook: [`exploracao_Gold.ipynb`](exploracao_Gold.ipynb).
 ## Amazon Athena — Consultas SQL
 
 Com as 6 tabelas Gold catalogadas no Data Catalog, as consultas analíticas foram feitas via **Amazon Athena**, organizadas em 6 arquivos `.sql` (pasta `Selects - Athena/`), um por tema de negócio, cada um respondendo diretamente a um bloco das perguntas do problema de negócio:
