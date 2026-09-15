@@ -159,6 +159,7 @@ O pipeline parte dos 3 CSVs originais (Fonte de Dados) e passa por: **AWS S3 (Br
 | AWS Glue | Conexão, extração e catalogação dos dados (Crawler + Data Catalog) |
 | PySpark (via Glue Job) | Limpeza, padronização, transformação e agregação de negócio |
 | Amazon Athena | Consultas SQL analíticas sobre a camada Gold |
+| Notebooks Python (Google Colab) | Exploração dos CSVs brutos (`exploracao_CSV.ipynb`), validação da Silver/Gold em Parquet (`exploracao_CamadaSilver.ipynb`, `exploracao_Gold.ipynb`) e geração dos gráficos finais (`Codigos de Plots.ipynb`) |
 
 Estrutura real no S3 (bucket `tech-challeng-3-pedrogarcia-rm374179`, região us-east-1):
 
