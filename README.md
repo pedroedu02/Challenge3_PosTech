@@ -171,6 +171,34 @@ Estrutura real no S3 (bucket `tech-challeng-3-pedrogarcia-rm374179`, região us-
 | `Silver/state_of_data/` | Tabela histórica única, padronizada |
 | `Gold/mercado/`, `Gold/remuneracao/`, `Gold/tecnologias/`, `Gold/ia/`, `Gold/diversidade/`, `Gold/trabalho/` | 6 tabelas de negócio, uma por tema |
 
+```
+tech-challeng-3-pedrogarcia-rm374179/          (região us-east-1)
+├── Bronze/
+│   └── state_of_data/
+│       ├── ano_pesquisa=2023/
+│       │   └── state_of_data_2023.csv              (14,5 MB)
+│       ├── ano_pesquisa=2024/
+│       │   └── state_of_data_2024.csv               (15,5 MB)
+│       └── ano_pesquisa=2025-2026/
+│           └── state_of_data_2025-2026.csv          (9,9 MB)
+│
+├── Silver/
+│   └── state_of_data/
+│       ├── ano_pesquisa=2023/
+│       ├── ano_pesquisa=2024/
+│       └── ano_pesquisa=2025-2026/
+│           └── *.parquet                            (tabela única padronizada)
+│
+└── Gold/
+    ├── mercado/
+    ├── remuneracao/
+    ├── tecnologias/
+    ├── ia/
+    ├── diversidade/
+    └── trabalho/
+        └── *.parquet                                (uma pasta por tabela de negócio)
+```
+
 Imagens do console: [imagens Console AWS/s3](imagens%20Console%20AWS/s3)
 
 > ⚠️ **PS:** Todos os buckets foram criados diretamente pelo proprio console, não foi criado por codigos.
