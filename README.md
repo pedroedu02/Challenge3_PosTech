@@ -228,7 +228,7 @@ Cada uma das 6 tabelas é gravada em Parquet, particionada por `ano_pesquisa`, e
  
 Código completo: [Código Spark - Silver to Gold](<Scripts%20Spark%20(silver%20-%20gold)/Codigo%20Spark%20-%20Silver%20to%20Gold.txt>)
  
-## Análise exploratória da Gold via notebook (Google Colab) - CAMADA GOLD
+## Análise exploratória da Gold via notebook - CAMADA GOLD
  
 Depois que o Job `silver_to_gold` gravou as 6 tabelas em Parquet, a validação delas foi feita em notebook Python à parte: leitura de cada tabela, conferência de schema e volume de linhas, e reprodução das principais análises de negócio (senioridade, remuneração, tecnologias, IA, diversidade, modelo de trabalho) diretamente sobre a Gold. Notebook: [`exploracao_Gold.ipynb`](exploracao_Gold.ipynb).
 ## Amazon Athena — Consultas SQL
@@ -246,4 +246,56 @@ Com as 6 tabelas Gold catalogadas no Data Catalog, as consultas analíticas fora
 
 Ao todo são 26 consultas, rodadas uma de cada vez no editor do Athena (o editor só executa uma instrução por vez). O resultado de cada uma delas, já tabulado, está em [`resultados_queries_gold.md`](Selects%20-%20Athena/resultados_queries_gold.md), na mesma pasta.
 
-Dois pontos de decisão tomados durante a validação dessas consultas, e já refletidos nos números tabulados: **"Não informado"** foi mantido como categoria própria nos percentuais (não excluído do denominador), e o registro com erro de digitação `"R$ 101/mês a R$ 2.000/mês"` (2023, 1 linha) foi desconsiderado — ambos aplicados desde a camada Silver.
+## Geração da apresentação - gráficos, Dashs, BIs
+
+Com as 6 tabelas Gold prontas, os gráficos finais foram gerados em notebook Python (`matplotlib`), lendo direto do S3 real e salvando cada gráfico como `.png` na pasta `PLOTS/`. Cada gráfico do notebook está ligado à consulta SQL que o originou (mesma lógica do Athena) e ao trecho de código do material executivo que usa aquele número — ou seja, todo número exibido tem origem rastreável até a tabela Gold.
+
+Notebook: [`Codigos de Plots.ipynb`](<Codigos%20de%20Plots.ipynb>).
+
+Pasta com todos os gráficos gerados: [`PLOTS/`](PLOTS/)
+
+## Plots gerados + Storytelling com os dados tratados e organizados
+
+Diferente do storytelling inicial (dados brutos, no começo deste documento), os números abaixo já passaram por todo o pipeline — Bronze → Silver → Gold — com deduplicação, correção de erros de digitação e "Não informado" tratado como categoria própria nos percentuais. São esses números, e não os do storytelling inicial, que sustentam a conclusão final do trabalho.
+
+**Distribuição por senioridade** — a fatia de Júnior encolhe ano a ano (19,8% → 16,6% → 14,8%), enquanto Sênior cresce (26,8% → 30,1% → 37,1%, já incluindo a categoria Especialista/Staff+ agrupada). O mercado está mais seletivo na entrada e mais concentrado no topo.
+
+![Distribuição por senioridade](PLOTS/01_senioridade.png)
+
+**Top cargos por ano** — os mesmos 4 cargos dominam nos 3 anos, na mesma ordem (Analista de Dados > Cientista de Dados > Engenheiro de Dados > Analista de BI). Não existe "cargo da moda" mudando de ano para ano — é um mercado maduro, com papéis bem definidos.
+
+![Top cargos por ano](PLOTS/02_top_cargos.png)
+
+**Remuneração** — a faixa mais comum (R$ 8-12 mil) se mantém estável, mas o topo da pirâmide (acima de R$ 40 mil) cresce mais rápido proporcionalmente. O mercado paga cada vez melhor os perfis mais seniores/especializados.
+
+![Remuneração](PLOTS/03_remuneracao.png)
+
+**Tecnologias** — Python segue dominante e sem rival relevante, e AWS lidera o ranking de cloud com folga sobre Azure e GCP. Python + SQL + AWS é a combinação técnica "segura" para qualquer contratação em dados.
+
+![Tecnologias](PLOTS/04_tecnologias.png)
+
+**Inteligência Artificial** — o gráfico mais forte de toda a análise: não-uso de IA generativa caiu de 19,7% para 2,1% em 3 pesquisas. A IA deixou de ser diferencial e virou padrão básico de mercado.
+
+![Inteligência Artificial](PLOTS/05_ia.png)
+
+**Diversidade de gênero** — participação feminina em queda constante (24,4% → 23,5% → 22,0%), sem nenhuma oscilação — é tendência estrutural, não ruído de uma pesquisa isolada.
+
+![Diversidade](PLOTS/06_diversidade.png)
+
+**Modelo de trabalho** — 100% remoto caindo (41,6% → 36,7%) e 100% presencial subindo (14,9% → 19,2%): reversão real da tendência remota pós-pandemia.
+
+![Modelo de trabalho](PLOTS/07_trabalho.png)
+
+**Diferenças regionais** — o Sudeste concentra e ainda cresce (59,9% → 62,1%); o Norte segue residual (~1,5%). Talento de dados é geograficamente concentrado no Brasil.
+
+![Diferenças regionais](PLOTS/08_regioes.png)
+
+## Conclusão de mercado
+
+A pesquisa State of Data Brasil, ao longo de 2023, 2024 e 2025-2026, mostra um mercado de Dados brasileiro **estruturalmente maduro**: a mesma hierarquia de cargos (Analista de Dados, Cientista de Dados, Engenheiro de Dados e Analista de BI) domina nos 3 anos, sem "cargo da moda" surgindo ou desaparecendo, e a pirâmide de senioridade vem se deslocando para o topo — entrada júnior cada vez mais seletiva, enquanto perfis sênior e especialistas ganham espaço e remuneração proporcionalmente maior. Isso indica que os **perfis mais valorizados hoje** são justamente os mais experientes e especializados, e que programas de trainee/júnior tendem a virar diferencial competitivo de atração, não commodity.
+
+Do lado técnico, o mercado está longe de fragmentado: **Python e SQL seguem como base não-negociável**, e a AWS lidera o ranking de cloud com folga — ou seja, a adoção de tecnologia é estável e previsível, o que reduz o risco de qualquer decisão de investimento em stack técnico. O ponto de inflexão real está na **Inteligência Artificial**: a não-adoção de IA generativa caiu de quase 20% para praticamente 2% em três pesquisas, a queda mais acentuada de toda a análise. Isso significa que a IA generativa deixou de ser um diferencial estratégico e virou parte do trabalho cotidiano do profissional de dados — a decisão que resta para uma instituição financeira não é mais "se" vai adotar IA na área de Dados, e sim **com que governança, ferramentas e controles** essa adoção, que já está acontecendo, vai ser conduzida.
+
+Já o **cenário de diversidade de gênero** é o principal ponto de atenção negativo: a participação feminina caiu de forma constante e sem oscilação nos 3 anos (24,4% → 22,0%), o que caracteriza uma tendência estrutural, não uma variação estatística pontual — sem uma política ativa e deliberada, a inércia do mercado tende a aprofundar esse desequilíbrio, não corrigi-lo sozinha. Em paralelo, o **modelo de trabalho** também mostra uma reversão clara: o "tudo remoto" que dominava em 2023-2024 vem perdendo espaço para o presencial e híbrido, sinalizando que políticas de retorno (parcial ou total) ao escritório estão alinhadas com o movimento real do mercado, não contra ele. E, regionalmente, o talento de dados segue **concentrado no Sudeste** (que ainda cresce em participação), com o Norte permanecendo residual — qualquer estratégia de expansão ou hub fora do eixo Sul-Sudeste vai competir por um pool de profissionais estruturalmente menor.
+
+Para uma instituição financeira que planeja expandir sua área de Dados, Analytics e IA, isso se traduz em **oportunidades e desafios concretos**: a oportunidade está num mercado tecnicamente previsível (Python/SQL/AWS), com uma trilha de senioridade clara e uma adoção de IA generativa que já é natural para a maioria dos profissionais — o que reduz o risco de investir em capacitação e ferramentas que "podem não pegar". O desafio está em três frentes que não se resolvem sozinhas: competir por talento sênior cada vez mais concentrado e mais caro, construir uma política de diversidade de gênero que não dependa da inércia do mercado, e definir com clareza a política de trabalho (remoto/híbrido/presencial) e a governança de uso de IA generativa antes que a decisão seja tomada "por padrão" em vez de por estratégia.
