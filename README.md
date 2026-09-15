@@ -231,3 +231,20 @@ Código completo: [Código Spark - Silver to Gold](<Scripts%20Spark%20(silver%20
 ## Análise exploratória da Gold via notebook (Google Colab)
  
 Depois que o Job `silver_to_gold` gravou as 6 tabelas em Parquet, a validação delas foi feita em notebook Python à parte: leitura de cada tabela, conferência de schema e volume de linhas, e reprodução das principais análises de negócio (senioridade, remuneração, tecnologias, IA, diversidade, modelo de trabalho) diretamente sobre a Gold. Notebook: [`exploracao_Gold.ipynb`](exploracao_Gold.ipynb) — [abrir direto no Google Colab](https://colab.research.google.com/github/pedroedu02/Challenge3_PosTech/blob/main/exploracao_Gold.ipynb).
+
+## Amazon Athena — Consultas SQL
+
+Com as 6 tabelas Gold catalogadas no Data Catalog, as consultas analíticas foram feitas via **Amazon Athena**, organizadas em 6 arquivos `.sql` (pasta `Selects - Athena/`), um por tema de negócio, cada um respondendo diretamente a um bloco das perguntas do problema de negócio:
+
+| Arquivo | Perguntas respondidas |
+|---|---|
+| [`mercado.sql`](Selects%20-%20Athena/mercado.sql) | Total de profissionais, distribuição por senioridade, cargo e região |
+| [`remuneracao.sql`](Selects%20-%20Athena/remuneracao.sql) | Faixa salarial por senioridade, cargo e região, evolução salarial |
+| [`tecnologias.sql`](Selects%20-%20Athena/tecnologias.sql) | Ranking de linguagens/cloud/BI, evolução, por senioridade e cargo |
+| [`ia.sql`](Selects%20-%20Athena/ia.sql) | Adoção de IA, evolução, por senioridade e cargo |
+| [`diversidade.sql`](Selects%20-%20Athena/diversidade.sql) | Gênero por ano, senioridade, região e cargo |
+| [`trabalho.sql`](Selects%20-%20Athena/trabalho.sql) | Modelo de trabalho, evolução, relação com remuneração |
+
+Ao todo são 26 consultas, rodadas uma de cada vez no editor do Athena (o editor só executa uma instrução por vez). O resultado de cada uma delas, já tabulado, está em [`resultados_queries_gold.md`](Selects%20-%20Athena/resultados_queries_gold.md), na mesma pasta.
+
+Dois pontos de decisão tomados durante a validação dessas consultas, e já refletidos nos números tabulados: **"Não informado"** foi mantido como categoria própria nos percentuais (não excluído do denominador), e o registro com erro de digitação `"R$ 101/mês a R$ 2.000/mês"` (2023, 1 linha) foi desconsiderado — ambos aplicados desde a camada Silver.
